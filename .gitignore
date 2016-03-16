@@ -1,0 +1,6 @@
+# Created by .ignore support plugin (hsz.mobi)
+/.gradle
+/build
+/parallel-ratpack.iws
+/.gitignore
+/parallel-ratpack.iml
