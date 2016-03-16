@@ -9,6 +9,8 @@ import spock.lang.AutoCleanup
 import spock.lang.Specification
 import toDoInParallel.ParallelThing
 
+import java.util.concurrent.CountDownLatch
+
 class ParallelManagerSpec extends Specification {
 
   @AutoCleanup
@@ -38,16 +40,34 @@ class ParallelManagerSpec extends Specification {
   }
 
   def 'fetches item'() {
+    setup:
+    def latch = new CountDownLatch(5)
+    def c = { v -> latch.countDown() }
+
     //You may have to run this over and over again to get it to fail - it's a close race!
     when:
-    List result = sync(RxRatpack.promiseSingle(manager.fetchValue()))
+    List result = harness.yield {
+      manager.fetchValue()
+          .doOnNext { v -> latch.await() }
+          .promiseSingle()
+    }.valueOrThrow
 
     then:
-    1 * parallelThingUno.fetchValue() >> Observable.just("mocked uno")
-    1 * parallelThingDos.fetchValue() >> Observable.just("mocked dos")
-    1 * parallelThingTres.fetchValue() >> Observable.just("mocked tres")
-    1 * parallelThingQuattro.fetchValue() >> Observable.just("mocked quattro")
-    1 * parallelThingCinco.fetchValue() >> Observable.just("mocked cinco")
+    1 * parallelThingUno.fetchValue() >> Observable.just("mocked uno").doOnNext(c).doOnSubscribe {
+      println "I'm on thread ${Thread.currentThread().name}"
+    }
+    1 * parallelThingDos.fetchValue() >> Observable.just("mocked dos").doOnNext(c).doOnSubscribe {
+      println "I'm on thread ${Thread.currentThread().name}"
+    }
+    1 * parallelThingTres.fetchValue() >> Observable.just("mocked tres").doOnNext(c).doOnSubscribe {
+      println "I'm on thread ${Thread.currentThread().name}"
+    }
+    1 * parallelThingQuattro.fetchValue() >> Observable.just("mocked quattro").doOnNext(c).doOnSubscribe {
+      println "I'm on thread ${Thread.currentThread().name}"
+    }
+    1 * parallelThingCinco.fetchValue() >> Observable.just("mocked cinco").doOnNext(c).doOnSubscribe {
+      println "I'm on thread ${Thread.currentThread().name}"
+    }
 
     result.each {
       println it
@@ -55,7 +75,6 @@ class ParallelManagerSpec extends Specification {
     result.size() == 5
 
   }
-
 
   public <T> T sync(Promise<T> promise) {
     harness.yield(Function.constant(promise)).valueOrThrow
