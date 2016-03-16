@@ -44,7 +44,6 @@ class ParallelManagerSpec extends Specification {
     def latch = new CountDownLatch(5)
     def c = { v -> latch.countDown() }
 
-    //You may have to run this over and over again to get it to fail - it's a close race!
     when:
     List result = harness.yield {
       manager.fetchValue()
