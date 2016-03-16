@@ -7,7 +7,6 @@ import rx.functions.Func2
 import toDoInParallel.ParallelThing
 
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.CyclicBarrier
 
 class ParallelManager {
 
@@ -17,30 +16,18 @@ class ParallelManager {
   ParallelThing thingD = new ParallelThing()
   ParallelThing thingE = new ParallelThing()
 
-  Observable fetchValue() {
+  Observable<List<String>> fetchValue() {
     return thingA.fetchValue().flatMap(this.&fetchDependencies as Func1)
   }
 
-  Observable fetchDependencies(Object item) {
-    def thingBOb = thingB.fetchValue()
-    def thingCOb = thingC.fetchValue()
-    def thingDOb = thingD.fetchValue()
-    def thingEOb = thingE.fetchValue()
-    return forkAndFlatten([thingBOb, thingCOb, thingDOb, thingEOb])
-        .reduce(new CopyOnWriteArrayList(item), this.&aggregate as Func2)
+  Observable<List<String>> fetchDependencies(String item) {
+    Observable.from([thingB, thingC, thingD, thingE]*.fetchValue())
+        .compose(RxRatpack.&forkEach)
+        .flatMap { it }
+        .reduce(new CopyOnWriteArrayList<String>(item), this.&aggregate as Func2)
   }
 
-  Observable forkAndFlatten(List<Observable> observableList) {
-    //CyclicBarrier barrier = new CyclicBarrier(observableList.size())
-    Observable.from(observableList)
-    .compose(RxRatpack.&forkEach).flatMap {
-      it
-    }
-    //.doOnNext { value -> Exceptions.uncheck({}, { barrier.await() }) }
-  }
-
-  static List aggregate(List aggregate, String current) {
+  static List<String> aggregate(List<String> aggregate, String current) {
     return aggregate << current
   }
 }
-
