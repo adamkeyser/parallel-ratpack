@@ -1,1 +1,1 @@
-Gives an example of JavaRx parallel execution using Ratpack.
+Gives an example of RxJava parallel execution using Ratpack.
